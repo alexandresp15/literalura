@@ -5,7 +5,10 @@ import br.com.alexandresp15.literalura.repository.AutorRepository;
 import br.com.alexandresp15.literalura.repository.LivroRepository;
 import br.com.alexandresp15.literalura.service.ConsumoApi;
 import br.com.alexandresp15.literalura.service.ConverteDados;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
+import java.util.List;
 import java.util.Scanner;
 
 public class Principal {
@@ -33,15 +36,15 @@ public class Principal {
         while (opcao != 0) {
 
             System.out.println("""
-                
-                ---- LiterAlura ----
-                1 - Buscar livro pelo título
-                2 - Listar livros registrados
-                3 - Listar autores registrados
-                4 - Listar autores vivos em determinado ano
-                5 - Listar livros por idioma
-                0 - Sair
-                """);
+                    
+                    -------- LiterAlura --------
+                    1 - Buscar livro pelo título
+                    2 - Listar livros registrados
+                    3 - Listar autores registrados
+                    4 - Listar autores vivos em determinado ano
+                    5 - Listar livros por idioma
+                    0 - Sair
+                    """);
 
             opcao = leitura.nextInt();
             leitura.nextLine();
@@ -73,7 +76,7 @@ public class Principal {
                     break;
 
                 default:
-                    System.out.println("Opção inválida");
+                    System.out.println("Opção inválida.");
             }
         }
     }
@@ -83,53 +86,111 @@ public class Principal {
         System.out.println("Digite o nome do livro:");
         String nomeLivro = leitura.nextLine();
 
-        String json = consumo.obterDados(ENDERECO + nomeLivro.replace(" ", "+"));
+        try {
 
-        DadosResposta resposta = conversor.obterDados(json, DadosResposta.class);
+            String nomeCodificado = URLEncoder.encode(nomeLivro, StandardCharsets.UTF_8);
 
-        if (resposta.resultados().isEmpty()) {
-            System.out.println("Livro não encontrado.");
-            return;
+            String json = consumo.obterDados(ENDERECO + nomeCodificado);
+
+            DadosResposta resposta = conversor.obterDados(json, DadosResposta.class);
+
+            if (resposta.resultados().isEmpty()) {
+                System.out.println("Nenhum livro encontrado.");
+                return;
+            }
+
+            System.out.println("\nLivros encontrados:\n");
+
+            for (int i = 0; i < resposta.resultados().size() && i < 5; i++) {
+                System.out.println(i + " - " + resposta.resultados().get(i).titulo());
+            }
+
+            System.out.println("\nEscolha o número do livro:");
+            int escolha = leitura.nextInt();
+            leitura.nextLine();
+
+            DadosLivro dadosLivro = resposta.resultados().get(escolha);
+            DadosAutor dadosAutor = dadosLivro.autores().get(0);
+
+            String nomeAutor = dadosAutor.nome().trim();
+
+            Autor autor = autorRepository
+                    .findByNome(nomeAutor)
+                    .orElseGet(() -> {
+                        Autor novoAutor = new Autor(dadosAutor);
+                        novoAutor.setNome(nomeAutor);
+                        return autorRepository.save(novoAutor);
+                    });
+
+            Livro livro = new Livro(dadosLivro);
+            livro.setAutor(autor);
+
+            livroRepository.save(livro);
+
+            System.out.println("""
+                
+                Livro salvo com sucesso!
+                -----------------------
+                Título: %s
+                Autor: %s
+                Idioma: %s
+                Downloads: %d
+                """.formatted(
+                    livro.getTitulo(),
+                    autor.getNome(),
+                    livro.getIdioma(),
+                    livro.getNumeroDownloads()
+            ));
+
+        } catch (Exception e) {
+            System.out.println("Erro ao buscar livro.");
         }
-
-        DadosLivro dadosLivro = resposta.resultados().get(0);
-
-        DadosAutor dadosAutor = dadosLivro.autores().get(0);
-
-        Autor autor = new Autor(dadosAutor);
-
-        Livro livro = new Livro(dadosLivro);
-
-        livro.setAutor(autor);
-
-        autorRepository.save(autor);
-        livroRepository.save(livro);
-
-        System.out.println("Livro salvo com sucesso!");
     }
 
     private void listarLivros() {
 
-        var livros = livroRepository.findAll();
+        List<Livro> livros = livroRepository.findAll();
 
-        livros.forEach(livro ->
-                System.out.println(
-                        "Livro: " + livro.getTitulo() +
-                                " | Autor: " + livro.getAutor().getNome() +
-                                " | Idioma: " + livro.getIdioma()
-                ));
+        if (livros.isEmpty()) {
+            System.out.println("Nenhum livro encontrado.");
+            return;
+        }
+
+        livros.forEach(livro -> System.out.println("""
+                
+                ----- LIVRO -----
+                Título: %s
+                Autor: %s
+                Idioma: %s
+                Downloads: %d
+                """.formatted(
+                livro.getTitulo(),
+                livro.getAutor().getNome(),
+                livro.getIdioma(),
+                livro.getNumeroDownloads()
+        )));
     }
 
     private void listarAutores() {
 
-        var autores = autorRepository.findAll();
+        List<Autor> autores = autorRepository.findAll();
 
-        autores.forEach(autor ->
-                System.out.println(
-                        "Autor: " + autor.getNome() +
-                                " (" + autor.getAnoNascimento() +
-                                " - " + autor.getAnoFalecimento() + ")"
-                ));
+        if (autores.isEmpty()) {
+            System.out.println("Nenhum autor encontrado.");
+            return;
+        }
+
+        autores.forEach(autor -> System.out.println("""
+                
+                ----- AUTOR -----
+                Nome: %s
+                Nascimento: %d
+                Falecimento: %d
+                """.formatted(
+                autor.getNome(),
+                autor.getAnoNascimento(),
+                autor.getAnoFalecimento()
+        )));
     }
 
     private void listarAutoresVivos() {
@@ -138,29 +199,39 @@ public class Principal {
         int ano = leitura.nextInt();
         leitura.nextLine();
 
-        var autores = autorRepository
+        List<Autor> autores = autorRepository
                 .findByAnoNascimentoLessThanEqualAndAnoFalecimentoGreaterThanEqual(ano, ano);
 
-        autores.forEach(a ->
-                System.out.println("Autor vivo em " + ano + ": " + a.getNome()));
+        if (autores.isEmpty()) {
+            System.out.println("Nenhum autor vivo nesse ano.");
+            return;
+        }
+
+        autores.forEach(autor ->
+                System.out.println("Autor vivo em " + ano + ": " + autor.getNome()));
     }
 
     private void listarLivrosPorIdioma() {
 
         System.out.println("""
-            Idiomas disponíveis:
-            pt - Português
-            en - Inglês
-            es - Espanhol
-            fr - Francês
-            """);
+                Idiomas disponíveis:
+                pt - Português
+                en - Inglês
+                es - Espanhol
+                fr - Francês
+                """);
 
         String idioma = leitura.nextLine();
 
-        var livros = livroRepository.findByIdioma(idioma);
+        List<Livro> livros = livroRepository.findByIdioma(idioma);
 
-        livros.forEach(l ->
-                System.out.println("Livro: " + l.getTitulo()));
+        if (livros.isEmpty()) {
+            System.out.println("Nenhum livro encontrado nesse idioma.");
+            return;
+        }
+
+        livros.forEach(livro ->
+                System.out.println("Livro: " + livro.getTitulo() +
+                        " | Autor: " + livro.getAutor().getNome()));
     }
-
 }
