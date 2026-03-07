@@ -1,15 +1,18 @@
 package br.com.alexandresp15.literalura.model;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record DadosAutor(
 
-        @JsonAlias("name")
+        @JsonProperty("name")
         String nome,
 
-        @JsonAlias("birth_year")
+        @JsonProperty("birth_year")
         Integer anoNascimento,
 
-        @JsonAlias("death_year")
+        @JsonProperty("death_year")
         Integer anoFalecimento
 ) {}

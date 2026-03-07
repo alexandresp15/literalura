@@ -4,12 +4,15 @@ import br.com.alexandresp15.literalura.model.DadosLivro;
 import br.com.alexandresp15.literalura.model.DadosResposta;
 import br.com.alexandresp15.literalura.service.ConverteDados;
 import br.com.alexandresp15.literalura.service.ConsumoApi;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class LiteraluraApplication {
 
     public static void main(String[] args) {
+
+        SpringApplication.run(LiteraluraApplication.class, args);
 
         ConsumoApi consumo = new ConsumoApi();
         String endereco = "https://gutendex.com/books/?search=dom+casmurro";
