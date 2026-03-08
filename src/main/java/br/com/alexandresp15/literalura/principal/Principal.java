@@ -7,6 +7,7 @@ import br.com.alexandresp15.literalura.service.ConsumoApi;
 import br.com.alexandresp15.literalura.service.ConverteDados;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 
 import java.util.List;
 import java.util.Scanner;
@@ -43,6 +44,7 @@ public class Principal {
                     3 - Listar autores registrados
                     4 - Listar autores vivos em determinado ano
                     5 - Listar livros por idioma
+                    6 - Top 10 livros mais baixados
                     0 - Sair
                     """);
 
@@ -73,6 +75,10 @@ public class Principal {
 
                 case 0:
                     System.out.println("Encerrando aplicação...");
+                    break;
+
+                case 6:
+                    top10LivrosAPI();
                     break;
 
                 default:
@@ -233,5 +239,23 @@ public class Principal {
         livros.forEach(livro ->
                 System.out.println("Livro: " + livro.getTitulo() +
                         " | Autor: " + livro.getAutor().getNome()));
+    }
+
+    public void top10LivrosAPI() {
+
+        ConsumoApi consumoApi = new ConsumoApi();
+        String endereco = "https://gutendex.com/books/";
+
+        var json = consumoApi.obterDados(endereco);
+        DadosResposta resposta = conversor.obterDados(json, DadosResposta.class);
+
+        System.out.println("\nTop 10 livros mais baixados:\n");
+
+        resposta.resultados().stream()
+                .sorted(Comparator.comparing(DadosLivro::numeroDownloads).reversed())
+                .limit(10)
+                .forEach(l -> System.out.println(
+                        l.titulo() + " - Downloads: " + l.numeroDownloads()
+                ));
     }
 }
